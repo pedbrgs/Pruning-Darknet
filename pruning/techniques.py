@@ -665,7 +665,7 @@ def projection_based_pruning(model, rate, technique, X, Y, c):
 
     """ Projections-based pruning of convolutional filters in the model. """
   
-    print('Projections-based pruning %s\n' % (technique.upper()))
+    print('Projections-based pruning %s.' % (technique.upper()))
 
     if technique.upper() == 'PLS-VIP-SINGLE':
         importances = pls_vip_single(model, X, Y, c)
@@ -686,7 +686,7 @@ def projection_based_pruning(model, rate, technique, X, Y, c):
         block, filter, importance = selected[i]
         model = single_pruning(model, block, filter)
 
-    print('%d filters were pruned.' % (len(selected)))
+    print('%d filters were pruned.\n' % (len(selected)))
 
     return model
 
