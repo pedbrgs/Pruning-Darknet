@@ -1,5 +1,6 @@
 import os
 import argparse
+import numpy as np
 from models import *
 from utils.utils import *
 from utils.build import *
@@ -33,6 +34,7 @@ if __name__ == '__main__':
 
     for pruning_rate in pruning_rates:
 
+        pruning_rate = np.round(pruning_rate, decimals = 2)
         print('Pruning rate:', pruning_rate)
 
         # Loading Darknet model in PyTorch
