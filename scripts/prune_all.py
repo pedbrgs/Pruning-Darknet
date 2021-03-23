@@ -58,8 +58,8 @@ if __name__ == '__main__':
             raise AssertionError('The technique %s does not exist.' % (opt.technique))
 
         # Save network configuration file and network weights
-        save_weights(model, path = opt.technique + os.sep + 'pruned' + str(pruning_rate*100) + opt.weights)
+        save_weights(model, path = opt.technique + os.sep + 'pruned' + str(int(pruning_rate*100)) + opt.weights)
         version = int(opt.network.split('v')[-1])    
-        model_to_cfg(model, cfg = opt.technique + os.sep + 'pruned' + str(pruning_rate*100) + opt.cfg, mode = 'train', version = version)
+        model_to_cfg(model, cfg = opt.technique + os.sep + 'pruned' + str(int(pruning_rate*100)) + opt.cfg, mode = 'train', version = version)
     
         del model
