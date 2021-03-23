@@ -30,6 +30,14 @@ if __name__ == '__main__':
     # Pruning rates from 5% to 95% with step by 5%
     pruning_rates = np.arange(start = 0.05, stop = 1, step = 0.05)
 
+    if opt.technique.upper() in ['PLS-VIP-SINGLE', 'PLS-VIP-MULTI', 'CCA-CV-MULTI', 'PLS-LC-MULTI']:
+        try:
+            with open(opt.variables, 'rb') as f:
+                X = np.load(f)
+                Y = np.load(f)
+        except:
+            raise AssertionError('To prune using projection-based methods, you must generate the X and Y variables first.')
+
     for pruning_rate in pruning_rates:
 
         pruning_rate = np.round(pruning_rate, decimals = 2)
@@ -44,12 +52,6 @@ if __name__ == '__main__':
             model = criteria_based_pruning(model, pruning_rate, opt.technique)
         # Prune network with projection-based method
         elif opt.technique.upper() in ['PLS-VIP-SINGLE', 'PLS-VIP-MULTI', 'CCA-CV-MULTI', 'PLS-LC-MULTI']:
-            try:
-                with open(opt.variables, 'rb') as f:
-                    X = np.load(f)
-                    Y = np.load(f)
-            except:
-                raise AssertionError('To prune using projection-based methods, you must generate the X and Y variables first.')
             model = projection_based_pruning(model, pruning_rate, opt.technique, X, Y, opt.n_components)
         # Prune network randomly
         elif opt.technique.upper() == 'RANDOM':
