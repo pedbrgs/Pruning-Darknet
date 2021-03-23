@@ -645,7 +645,7 @@ def criteria_based_pruning(model, rate, rank):
 
     """ Criteria-based pruning of convolutional filters in the model. """
   
-    print('Criteria-based pruning %s\n' % (rank.upper()))
+    print('Criteria-based pruning %s.' % (rank.upper()))
 
     if rank.upper() in ['L0', 'L1', 'L2', 'L-INF']:
         importances = norm(model, order = rank)
@@ -657,7 +657,7 @@ def criteria_based_pruning(model, rate, rank):
         block, filter, importance = selected[i]
         model = single_pruning(model, block, filter)
 
-    print('%d filters were pruned.' % (len(selected)))
+    print('%d filters were pruned.\n' % (len(selected)))
 
     return model
 

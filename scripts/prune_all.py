@@ -30,8 +30,6 @@ if __name__ == '__main__':
     # Pruning rates from 5% to 95% with step by 5%
     pruning_rates = np.arange(start = 0.05, stop = 1, step = 0.05)
 
-    print('Technique:', opt.technique)
-
     for pruning_rate in pruning_rates:
 
         pruning_rate = np.round(pruning_rate, decimals = 2)
