@@ -10,6 +10,11 @@ from torch.utils.data import DataLoader
 from utils.datasets import *
 from sklearn.cross_decomposition import CCA
 from sklearn.cross_decomposition import PLSRegression
+from sklearn.feature_selection import RFE
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import GradientBoostingClassifier
 
 def to_prune(model):
 
@@ -681,6 +686,82 @@ def projection_based_pruning(model, rate, technique, X, Y, c):
         selected = select_filters(model, rate, importances, mode = 'layer', ascending = True)
     else:
         raise AssertionError('The technique %s does not exist. Try PLS-VIP-Single, PLS-VIP-Multi, CCA-Multi or PLS-LC-Multi.' % (technique))
+
+    for i in range(len(selected)):
+        block, filter, importance = selected[i]
+        model = single_pruning(model, block, filter)
+
+    print('%d filters were pruned.\n' % (len(selected)))
+
+    return model
+
+def recursive_feature_elimination(model, X, Y, rate, classifier):
+
+    """ Recursive Feature Elimination (RFE). """
+
+    # Number of filters per layer
+    n_filters = per_layer(model, 1.0)
+
+    # Selected filters
+    selected = list()
+
+    for i, filters in enumerate(n_filters):
+
+        print('Layer', i)
+
+        # Separating input variable X by layer
+        start = sum(n_filters[:i])
+        end = sum(n_filters[:i+1])
+        X_l = X[start:end]
+
+        # Choosing the classifier
+        if classifier.upper() == 'RANDOM-FOREST':
+            clf = RandomForestClassifier()
+        elif classifier.upper() == 'DECISION-TREE':
+            clf = DecisionTreeClassifier()
+        elif classifier.upper() == 'LOGISTIC-REGRESSION':
+            clf = LogisticRegression(max_iter = 1000)
+        elif classifier.upper() == 'GRADIENT-BOOSTING':
+            clf = GradientBoostingClassifier()
+        else:
+            raise AssertionError('The classifier %s does not exist. Try Random-Forest, Logistic-Regression, Decision-Tree or Gradient-Boosting.' % (classifier))
+
+        # Number of filters to be removed
+        removed = int(filters*rate)        
+        # Number of remained filters
+        remained = filters - removed
+
+        # Recursive Feature Elimination
+        rfe = RFE(clf, remained)
+        # Fitting classifier
+        rfe = rfe.fit(X_l.T, Y)
+
+        # Filters to be removed
+        importances = sorted(set(np.arange(filters)).difference(set(np.arange(filters)[rfe.support_])), reverse = True)
+
+        # Concatenating (Block/Filter/Importance)
+        selected.append(np.column_stack([[i]*removed, importances, importances]))
+
+        # Delete current classifier
+        del clf
+
+    # Converting to list
+    selected = pd.DataFrame(np.vstack(selected))
+    selected[[0, 1]] = selected[[0, 1]].astype(int)
+    selected = selected.to_records(index=False).tolist()
+        
+    return selected
+
+def wrapper_based_pruning(model, rate, technique, X, Y, classifier = None):
+
+    """ Wrapper approaches include a classification/learning algorithm in the feature evaluation step. """
+
+    print('Wrapper-based pruning %s.' % (technique.upper()))
+
+    if technique.upper() == 'RFE':
+        selected = recursive_feature_elimination(model, X, Y, rate, classifier)
+    else:
+        raise AssertionError('The technique %s does not exist. Try RFE.' % (technique))
 
     for i in range(len(selected)):
         block, filter, importance = selected[i]

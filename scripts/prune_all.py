@@ -20,6 +20,7 @@ if __name__ == '__main__':
     parser.add_argument('--network', type = str, default = 'YOLOv4', help = 'network version')
     parser.add_argument('--variables', type = str, default = 'variables.npy', help = 'variables.npy path')
     parser.add_argument('--n-components', type = int, help = 'number of components of projection method')
+    parser.add_argument('--classifier', type = str, help = 'classifier for wrapper approach')
 
     opt = parser.parse_args()
     print(opt)
@@ -30,13 +31,13 @@ if __name__ == '__main__':
     # Pruning rates from 5% to 95% with step by 5%
     pruning_rates = np.arange(start = 0.05, stop = 1, step = 0.05)
 
-    if opt.technique.upper() in ['PLS-VIP-SINGLE', 'PLS-VIP-MULTI', 'CCA-CV-MULTI', 'PLS-LC-MULTI']:
+    if opt.technique.upper() in ['RFE', 'PLS-VIP-SINGLE', 'PLS-VIP-MULTI', 'CCA-CV-MULTI', 'PLS-LC-MULTI']:
         try:
             with open(opt.variables, 'rb') as f:
                 X = np.load(f)
                 Y = np.load(f)
         except:
-            raise AssertionError('To prune using projection-based methods, you must generate the X and Y variables first.')
+            raise AssertionError('To prune using a projection-based method or a wrapper-based method, you must generate the X and Y variables first.')
 
     for pruning_rate in pruning_rates:
 
@@ -53,6 +54,9 @@ if __name__ == '__main__':
         # Prune network with projection-based method
         elif opt.technique.upper() in ['PLS-VIP-SINGLE', 'PLS-VIP-MULTI', 'CCA-CV-MULTI', 'PLS-LC-MULTI']:
             model = projection_based_pruning(model, pruning_rate, opt.technique, X, Y, opt.n_components)
+        # Prune network with wrapper-based method
+        elif opt.technique.upper() == 'RFE':
+            model = wrapper_based_pruning(model, pruning_rate, opt.technique, X, Y, opt.classifier)
         # Prune network randomly
         elif opt.technique.upper() == 'RANDOM':
             model = random_pruning(model, pruning_rate, -1)

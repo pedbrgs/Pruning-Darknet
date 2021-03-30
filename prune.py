@@ -19,6 +19,7 @@ if __name__ == '__main__':
     parser.add_argument('--network', type = str, default = 'YOLOv4', help = 'network version')
     parser.add_argument('--variables', type = str, default = 'variables.npy', help = 'variables.npy path')
     parser.add_argument('--n-components', type = int, help = 'number of components of projection method')
+    parser.add_argument('--classifier', type = str, help = 'classifier for wrapper approach')
 
     opt = parser.parse_args()
     print(opt)
@@ -30,20 +31,25 @@ if __name__ == '__main__':
     print('Prunable layers:', len(to_prune(model)))
     print('Prunable filters:', prunable_filters(model))
 
+    if opt.technique.upper() in ['RFE', 'PLS-VIP-SINGLE', 'PLS-VIP-MULTI', 'CCA-CV-MULTI', 'PLS-LC-MULTI']:
+        try:
+            with open(opt.variables, 'rb') as f:
+                X = np.load(f)
+                Y = np.load(f)
+            print('Number of training images:', X.shape[1])
+            print('Number of convolutional filters:', X.shape[0])
+        except:
+            raise AssertionError('To prune using a projection-based method or a wrapper-based method, you must generate the X and Y variables first.')
+
     # Prune network with criteria-based method
     if opt.technique.upper() in ['L0', 'L1', 'L2', 'L-INF']:
         model = criteria_based_pruning(model, opt.pruning_rate, opt.technique)
     # Prune network with projection-based method
     elif opt.technique.upper() in ['PLS-VIP-SINGLE', 'PLS-VIP-MULTI', 'CCA-CV-MULTI', 'PLS-LC-MULTI']:
-        try:
-            with open(opt.variables, 'rb') as f:
-                X = np.load(f)
-                Y = np.load(f)
-        except:
-            raise AssertionError('To prune using projection-based methods, you must generate the X and Y variables first.')
-        print('Number of training images:', X.shape[1])
-        print('Number of convolutional filters:', X.shape[0])
         model = projection_based_pruning(model, opt.pruning_rate, opt.technique, X, Y, opt.n_components)
+    # Prune network with wrapper-based method
+    elif opt.technique.upper() == 'RFE':
+        model = wrapper_based_pruning(model, opt.pruning_rate, opt.technique, X, Y, opt.classifier)
     # Prune network randomly
     elif opt.technique.upper() == 'RANDOM':
         model = random_pruning(model, opt.pruning_rate, -1)
