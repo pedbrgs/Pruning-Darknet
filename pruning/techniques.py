@@ -783,8 +783,8 @@ def cluster_analysis(CCM, clustering, block):
 
                 # Maximum correlation between filter fi and filters of cluster cj
                 max_corr.extend(abs(CCM[block][fi][clusters[cj]]))
-            # The smallest maximum correlation of filter fi
-            minmax_corr.append(np.min(max_corr))
+            # The highest maximum correlation of filter fi, excluding auto-correlation (corr = 1)
+            minmax_corr.append(np.sort(max_corr)[-2])
             # Cleaning the maximum correlations of filter fi with all clusters
             max_corr.clear()
 
