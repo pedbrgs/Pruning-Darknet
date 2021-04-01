@@ -45,3 +45,6 @@ if __name__ == '__main__':
 
     # Saving matrix Y
     np.save(f, Y)
+
+    # Close file
+    f.close()

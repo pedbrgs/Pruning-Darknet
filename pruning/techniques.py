@@ -10,11 +10,8 @@ from torch.utils.data import DataLoader
 from utils.datasets import *
 from sklearn.cross_decomposition import CCA
 from sklearn.cross_decomposition import PLSRegression
-from sklearn.feature_selection import RFE
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.cluster import AgglomerativeClustering
+from scipy.stats import pearsonr, spearmanr, kendalltau
 
 def to_prune(model):
 
@@ -658,9 +655,17 @@ def criteria_based_pruning(model, rate, rank):
     else:
         raise AssertionError('The rank %s does not exist. Try L0, L1, L2 or L-Inf.' % (rank))
 
+    # Progress bar
+    pbar = tqdm(total = len(selected), desc = 'Pruning convolutional filters')
+
     for i in range(len(selected)):
         block, filter, importance = selected[i]
         model = single_pruning(model, block, filter)
+        # Update progress bar
+        pbar.update(1)
+
+    # Close progress bar
+    pbar.close()
 
     print('%d filters were pruned.\n' % (len(selected)))
 
@@ -687,85 +692,173 @@ def projection_based_pruning(model, rate, technique, X, Y, c):
     else:
         raise AssertionError('The technique %s does not exist. Try PLS-VIP-Single, PLS-VIP-Multi, CCA-Multi or PLS-LC-Multi.' % (technique))
 
+    # Progress bar
+    pbar = tqdm(total = len(selected), desc = 'Pruning convolutional filters')
+
     for i in range(len(selected)):
         block, filter, importance = selected[i]
         model = single_pruning(model, block, filter)
+        # Update progress bar
+        pbar.update(1)
+
+    # Close progress bar
+    pbar.close()
 
     print('%d filters were pruned.\n' % (len(selected)))
 
     return model
 
-def recursive_feature_elimination(model, X, Y, rate, classifier):
+def correlation_matrices(model, measure):
 
-    """ Recursive Feature Elimination (RFE). """
+    """ Compute correlation coefficient matrices. """
 
-    # Number of filters per layer
-    n_filters = per_layer(model, 1.0)
+    # Convolutional blocks to prune
+    blocks = to_prune(model)
+
+    # Correlation coefficient matrices
+    CCM = list()
+
+    # Progress bar
+    pbar = tqdm(total = len(blocks), desc = 'Computing correlation matrix')
+
+    # Loop over convolutional layers
+    for l, block in enumerate(blocks):
+
+        n_filters = model.module_list[block][0].weight.shape[0]
+        # One correlation coefficient matrix per layer
+        CCM.append(np.zeros((n_filters, n_filters)))
+
+        # Loop over convolutional filters of the current layer
+        for i in range(n_filters):
+            fi = model.module_list[block][0].weight[i]
+            for j in range(n_filters):
+                fj = model.module_list[block][0].weight[j]
+                # Pearson’s Correlation (linear relationship)
+                if measure.lower() == 'pearson':
+                    CCM[l][i][j] = pearsonr(fi.flatten().detach().numpy(), fj.flatten().detach().numpy())[0]
+                # Spearman's Correlation (non-linear relationship)
+                elif measure.lower() == 'spearman':
+                    CCM[l][i][j] = spearmanr(fi.flatten().detach().numpy(), fj.flatten().detach().numpy())[0]
+                # Kendall's Correlation (non-linear relationship)
+                elif measure.lower() == 'kendall':
+                    CCM[l][i][j] = kendalltau(fi.flatten().detach().numpy(), fj.flatten().detach().numpy())[0]
+                else:
+                    raise AssertionError('The measure %s does not exist. Try Pearson or Spearman.' % (measure))
+
+        # Update progress bar
+        pbar.update(1)
+    
+    # Close progress bar
+    pbar.close()
+
+    return CCM
+
+def cluster_analysis(CCM, clustering, block):
+
+    """ Selects filters of a given block for removal through a cluster analysis. """
+
+    # Maximum correlations of filter fi with all clusters
+    max_corr = list()
+    # The smallest maximum correlations of filters in cluster ci
+    minmax_corr = list()
+    # Filters selected for removal
+    selected = list()
+
+    # Dictionary containing the clusters with their respective filters
+    clusters = collections.defaultdict(list)
+    for fi, ci in enumerate(clustering.labels_):
+        clusters[ci].append(fi)
+
+    # Clusters with more than one filter
+    more_than_one = {x: count for x, count in collections.Counter(clustering.labels_).items() if count > 1}
+
+    # For each cluster that has more than one filter
+    for ci, nf in sorted(more_than_one.items()):
+
+        # For each filter in that cluster
+        for fi in clusters[ci]:
+
+            # Compare the correlation of this filter with all filters in each existing cluster
+            for cj in sorted(clusters.keys()):
+
+                # Maximum correlation between filter fi and filters of cluster cj
+                max_corr.extend(abs(CCM[block][fi][clusters[cj]]))
+            # The smallest maximum correlation of filter fi
+            minmax_corr.append(np.min(max_corr))
+            # Cleaning the maximum correlations of filter fi with all clusters
+            max_corr.clear()
+
+        # Selecting the filters that have the highest minimum correlation with the clusters
+        arg_selected = np.argsort(minmax_corr)[-(nf-1):]
+        selected.extend(np.take(clusters[ci], arg_selected))
+        # Clearing the smallest maximum correlations of filters in cluster ci
+        minmax_corr.clear()
+
+    return selected
+
+def agglomerative_clustering(model, rate, CCM):
+
+    """ Agglomerative clustering pruning method based on correlation between convolutional filters.
+    Based on paper Deep Network Pruning for Object Detection (https://ieeexplore.ieee.org/document/8803505) """
+
+    # Prunable blocks
+    blocks = to_prune(model)
 
     # Selected filters
     selected = list()
 
-    for i, filters in enumerate(n_filters):
+    # Progress bar
+    pbar = tqdm(total = len(blocks), desc = 'Selecting filters to prune')
 
-        print('Layer', i)
+    for i, block in enumerate(blocks):
 
-        # Separating input variable X by layer
-        start = sum(n_filters[:i])
-        end = sum(n_filters[:i+1])
-        X_l = X[start:end]
-
-        # Choosing the classifier
-        if classifier.upper() == 'RANDOM-FOREST':
-            clf = RandomForestClassifier()
-        elif classifier.upper() == 'DECISION-TREE':
-            clf = DecisionTreeClassifier()
-        elif classifier.upper() == 'LOGISTIC-REGRESSION':
-            clf = LogisticRegression(max_iter = 1000)
-        elif classifier.upper() == 'GRADIENT-BOOSTING':
-            clf = GradientBoostingClassifier()
-        else:
-            raise AssertionError('The classifier %s does not exist. Try Random-Forest, Logistic-Regression, Decision-Tree or Gradient-Boosting.' % (classifier))
-
-        # Number of filters to be removed
-        removed = int(filters*rate)        
-        # Number of remained filters
-        remained = filters - removed
-
-        # Recursive Feature Elimination
-        rfe = RFE(clf, remained)
-        # Fitting classifier
-        rfe = rfe.fit(X_l.T, Y)
-
-        # Filters to be removed
-        importances = sorted(set(np.arange(filters)).difference(set(np.arange(filters)[rfe.support_])), reverse = True)
+        # Number of filters in the current layer
+        n_filters = CCM[i].shape[0]
+        # Clustering filters of the current layer
+        clustering = AgglomerativeClustering(n_clusters = (n_filters - int(rate*n_filters)), 
+                                             linkage = 'complete', 
+                                             affinity = 'precomputed').fit(1-CCM[i])
+        # Select filters of the current layer to prune
+        selected_l = cluster_analysis(CCM, clustering, i)
 
         # Concatenating (Block/Filter/Importance)
-        selected.append(np.column_stack([[i]*removed, importances, importances]))
+        selected.append(np.column_stack([[block]*int(rate*n_filters), sorted(selected_l, reverse = True)]))
 
-        # Delete current classifier
-        del clf
+        # Update progress bar
+        pbar.update(1)
+
+    # Close progress bar
+    pbar.close()
 
     # Converting to list
     selected = pd.DataFrame(np.vstack(selected))
-    selected[[0, 1]] = selected[[0, 1]].astype(int)
+    selected = selected.astype(int)
     selected = selected.to_records(index=False).tolist()
-        
+
     return selected
 
-def wrapper_based_pruning(model, rate, technique, X, Y, classifier = None):
+def wrapper_based_pruning(model, rate, technique, CCM = None):
 
-    """ Wrapper approaches include a classification/learning algorithm in the feature evaluation step. """
+    """ Wrapper approaches include a classification/clustering algorithm in the filter evaluation step. """
 
     print('Wrapper-based pruning %s.' % (technique.upper()))
 
-    if technique.upper() == 'RFE':
-        selected = recursive_feature_elimination(model, X, Y, rate, classifier)
+    if technique.upper() == 'AGG-CLUSTERING':
+        selected = agglomerative_clustering(model, rate, CCM)
     else:
-        raise AssertionError('The technique %s does not exist. Try RFE.' % (technique))
+        raise AssertionError('The technique %s does not exist. Try Agg-Clustering.' % (technique))
+    
+    # Progress bar
+    pbar = tqdm(total = len(selected), desc = 'Pruning convolutional filters')
 
     for i in range(len(selected)):
-        block, filter, importance = selected[i]
+        block, filter = selected[i]
         model = single_pruning(model, block, filter)
+        # Update progress bar
+        pbar.update(1)
+
+    # Close progress bar
+    pbar.close()
 
     print('%d filters were pruned.\n' % (len(selected)))
 
@@ -788,6 +881,9 @@ def random_pruning(model, rate, seed = 42):
     if len(blocks) != len(n_filters):
         raise AssertionError('%d != %d\n' % (len(blocks), len(n_filters)))
 
+    # Progress bar
+    pbar = tqdm(total = sum(n_filters), desc = 'Pruning convolutional filters')
+
     for i in range(len(blocks)):
 
         if seed != -1:
@@ -796,8 +892,13 @@ def random_pruning(model, rate, seed = 42):
 
         for filter in filters:
             model = single_pruning(model, blocks[i], filter)
+            # Update progress bar
+            pbar.update(1)
 
     print('%d filters were pruned.' % (sum(n_filters)))
+
+    # Close progress bar
+    pbar.close()
 
     return model
 
