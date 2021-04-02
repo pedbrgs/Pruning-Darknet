@@ -647,7 +647,7 @@ def criteria_based_pruning(model, rate, rank):
 
     """ Criteria-based pruning of convolutional filters in the model. """
   
-    print('Criteria-based pruning %s.' % (rank.upper()))
+    print('Criteria-based pruning method: %s.' % (rank.upper()))
 
     if rank.upper() in ['L0', 'L1', 'L2', 'L-INF']:
         importances = norm(model, order = rank)
@@ -675,7 +675,7 @@ def projection_based_pruning(model, rate, technique, X, Y, c):
 
     """ Projections-based pruning of convolutional filters in the model. """
   
-    print('Projections-based pruning %s.' % (technique.upper()))
+    print('Projection-based pruning method: %s.' % (technique.upper()))
 
     if technique.upper() == 'PLS-VIP-SINGLE':
         importances = pls_vip_single(model, X, Y, c)
@@ -841,7 +841,7 @@ def wrapper_based_pruning(model, rate, technique, CCM = None):
 
     """ Wrapper approaches include a classification/clustering algorithm in the filter evaluation step. """
 
-    print('Wrapper-based pruning %s.' % (technique.upper()))
+    print('Wrapper-based pruning method: %s.' % (technique.upper()))
 
     if technique.upper() == 'AGG-CLUSTERING':
         selected = agglomerative_clustering(model, rate, CCM)
