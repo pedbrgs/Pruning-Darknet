@@ -782,16 +782,16 @@ def cluster_analysis(CCM, clustering, block):
             for cj in sorted(clusters.keys()):
 
                 # Maximum correlation between filter fi and filters of cluster cj
-                max_corr.extend(abs(CCM[block][fi][clusters[cj]]))
+                max_corr.extend(CCM[block][fi][clusters[cj]])
             # The highest maximum correlation of filter fi, excluding auto-correlation (corr = 1)
             minmax_corr.append(np.sort(max_corr)[-2])
             # Cleaning the maximum correlations of filter fi with all clusters
             max_corr.clear()
 
-        # Selecting the filters that have the highest minimum correlation with the clusters
+        # Selecting the filters that have the highest maximum correlation with the clusters
         arg_selected = np.argsort(minmax_corr)[-(nf-1):]
         selected.extend(np.take(clusters[ci], arg_selected))
-        # Clearing the smallest maximum correlations of filters in cluster ci
+        # Cleaning the highest maximum correlations of filters in cluster ci
         minmax_corr.clear()
 
     return selected
@@ -817,9 +817,9 @@ def agglomerative_clustering(model, rate, CCM):
         # Clustering filters of the current layer
         clustering = AgglomerativeClustering(n_clusters = (n_filters - int(rate*n_filters)), 
                                              linkage = 'complete', 
-                                             affinity = 'precomputed').fit(1-CCM[i])
+                                             affinity = 'precomputed').fit(1-np.absolute(CCM[i]))
         # Select filters of the current layer to prune
-        selected_l = cluster_analysis(CCM, clustering, i)
+        selected_l = cluster_analysis(np.absolute(CCM), clustering, i)
 
         # Concatenating (Block/Filter/Importance)
         selected.append(np.column_stack([[block]*int(rate*n_filters), sorted(selected_l, reverse = True)]))
