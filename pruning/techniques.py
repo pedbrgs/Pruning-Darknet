@@ -730,9 +730,9 @@ def correlation_matrices(model, measure):
 
         # Loop over convolutional filters of the current layer
         for i in range(n_filters):
-            fi = model.module_list[block][0].weight[i]
+            fi = model.module_list[block][0].weight[i].data
             for j in range(n_filters):
-                fj = model.module_list[block][0].weight[j]
+                fj = model.module_list[block][0].weight[j].data
                 # Pearson’s Correlation (linear relationship)
                 if measure.lower() == 'pearson':
                     CCM[l][i][j] = pearsonr(fi.flatten().detach().numpy(), fj.flatten().detach().numpy())[0]
@@ -743,7 +743,7 @@ def correlation_matrices(model, measure):
                 elif measure.lower() == 'kendall':
                     CCM[l][i][j] = kendalltau(fi.flatten().detach().numpy(), fj.flatten().detach().numpy())[0]
                 else:
-                    raise AssertionError('The measure %s does not exist. Try Pearson or Spearman.' % (measure))
+                    raise AssertionError('The measure %s does not exist. Try Pearson, Spearman or Kendall.' % (measure))
 
         # Update progress bar
         pbar.update(1)
@@ -817,7 +817,7 @@ def agglomerative_clustering(model, rate, CCM):
         # Clustering filters of the current layer
         clustering = AgglomerativeClustering(n_clusters = (n_filters - int(rate*n_filters)), 
                                              linkage = 'complete', 
-                                             affinity = 'precomputed').fit(1-np.absolute(CCM[i]))
+                                             affinity = 'precomputed').fit(1-CCM[i])
         # Select filters of the current layer to prune
         selected_l = cluster_analysis(np.absolute(CCM), clustering, i)
 
