@@ -757,10 +757,10 @@ def cluster_analysis(CCM, clustering, block):
 
     """ Selects filters of a given block for removal through a cluster analysis. """
 
-    # Maximum correlations of filter fi with all clusters
+    # Correlations of filter fi with all filters of the other clusters
+    corr = list()
+    # Maximum correlation of each filter in cluster ci
     max_corr = list()
-    # The smallest maximum correlations of filters in cluster ci
-    minmax_corr = list()
     # Filters selected for removal
     selected = list()
 
@@ -780,19 +780,21 @@ def cluster_analysis(CCM, clustering, block):
 
             # Compare the correlation of this filter with all filters in each existing cluster
             for cj in sorted(clusters.keys()):
+                # Do not compare filters from the same cluster
+                if ci != cj:
+                    # Correlations between filter fi and filters of cluster cj
+                    corr.extend(CCM[block][fi][clusters[cj]])
 
-                # Maximum correlation between filter fi and filters of cluster cj
-                max_corr.extend(CCM[block][fi][clusters[cj]])
-            # The highest maximum correlation of filter fi, excluding auto-correlation (corr = 1)
-            minmax_corr.append(np.sort(max_corr)[-2])
-            # Cleaning the maximum correlations of filter fi with all clusters
-            max_corr.clear()
+            # Maximum correlation of the filter fi with the other clusters
+            max_corr.append(np.max(corr))
+            # Clearing the correlations of the filter fi with all filters of the other clusters
+            corr.clear()
 
-        # Selecting the filters that have the highest maximum correlation with the clusters
-        arg_selected = np.argsort(minmax_corr)[-(nf-1):]
+        # Selects the (nf-1) filters in cluster ci that have the highest correlation with the other clusters
+        arg_selected = np.argsort(max_corr)[-(nf-1):]
         selected.extend(np.take(clusters[ci], arg_selected))
-        # Cleaning the highest maximum correlations of filters in cluster ci
-        minmax_corr.clear()
+        # Clearing the maximum correlations of the filters in cluster ci
+        max_corr.clear()
 
     return selected
 
