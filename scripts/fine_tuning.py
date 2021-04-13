@@ -108,7 +108,7 @@ if __name__ == '__main__':
     # Pruned models with pruning rate from 5% to 95%
     folders = np.arange(start = 5, stop = 100, step = 5)
     # Partial weights
-    weights = np.arange(start = 1000, stop = 9000, step = 1000)
+    weights = np.arange(start = 1000, stop = opt.tuning_iter + 1000, step = 1000)
 
     try:
         # Remove current eval.txt file
@@ -134,7 +134,10 @@ if __name__ == '__main__':
         # Remove partial weights
         os.chdir('weights/')
         for w in weights:
-            os.remove('dfire_' + str(w) + '.weights')
+            try:
+                os.remove('dfire_' + str(w) + '.weights')
+            except:
+                pass
         os.remove('dfire_last.weights')
         os.remove('dfire_final.weights')
 
