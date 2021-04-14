@@ -1,4 +1,4 @@
-##  Pruning techniques of Convolutional Neural Networks implemented in the Darknet
+##  Pruning techniques of Convolutional Neural Networks implemented in the Darknet framework
 
 **Author:** [Pedro Vinícius A. B. Venâncio](https://www.linkedin.com/in/pedbrgs/)<sup>1,2</sup> <br />
 
