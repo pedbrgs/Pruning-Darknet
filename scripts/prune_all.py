@@ -28,6 +28,13 @@ if __name__ == '__main__':
     # Create output folder
     os.mkdir(opt.technique + os.sep)
 
+    # Loading Darknet model in PyTorch
+    enable_cfg(opt.cfg, framework = 'PyTorch')
+    model = YOLO(opt.cfg, opt.data, opt.names, opt.weights, opt.img_size)
+
+    print('Prunable layers:', len(to_prune(model)))
+    print('Prunable filters:', prunable_filters(model))
+
     # Pruning rates from 5% to 95% with step by 5%
     pruning_rates = np.arange(start = 0.05, stop = 1, step = 0.05)
 
