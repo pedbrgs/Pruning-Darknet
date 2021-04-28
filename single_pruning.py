@@ -86,7 +86,8 @@ if __name__ == '__main__':
 
     # Fine-tuning
     if opt.tuning == True:
-        fine_tuning(technique = opt.technique,
+        fine_tuning(filename = opt.names.split('.')[0],
+            technique = opt.technique,
             pruning_rate = opt.pruning_rate,
             img_size = opt.img_size,
             lr = opt.lr,

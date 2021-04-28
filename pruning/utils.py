@@ -2,7 +2,7 @@ import os
 import torch
 import numpy as np
 
-def fine_tuning(technique, pruning_rate, img_size, lr, tuning_iter, layer, steps):
+def fine_tuning(filename, technique, pruning_rate, img_size, lr, tuning_iter, layer, steps):
 
     """ Performs the fine-tuning procedure """
 
@@ -19,24 +19,24 @@ def fine_tuning(technique, pruning_rate, img_size, lr, tuning_iter, layer, steps
     pruning_rate = int(pruning_rate*100)
 
     # Change hyperparameters
-    hyperparams(img_size, tuning_iter, lr, steps)
+    hyperparams(filename, img_size, tuning_iter, lr, steps)
     # Change validation set
-    valid_set('valid')
+    valid_set(filename, 'valid')
     # Freezing layers to generate pre-weights
-    pre_weights(pruning_rate, layer)
+    pre_weights(filename, pruning_rate, layer)
     # Training pruned model
-    training_model(pruning_rate, layer)
+    training_model(filename, pruning_rate, layer)
 
     # Remove partial weights
     os.chdir('weights/')
     for w in weights:
         try:
-            os.remove('dfire_' + str(w) + '.weights')
+            os.remove(filename + '_' + str(w) + '.weights')
         except:
             pass
-    os.remove('dfire_last.weights')
-    os.remove('dfire_final.weights')
-    os.rename('dfire_best.weights', '../temp/dfire.weights')
+    os.remove(filename + '_last.weights')
+    os.remove(filename + '_final.weights')
+    os.rename(filename + '_best.weights', '../temp/' + filename + '.weights')
 
 
 def get_variables(model, data, img_size, num_classes, pool_type, perc_samples):
@@ -80,7 +80,7 @@ def get_variables(model, data, img_size, num_classes, pool_type, perc_samples):
 
     return X, Y
 
-def training_model(pruning_rate, layer):
+def training_model(filename, pruning_rate, layer):
 
     """ Training the pruned model """
 
@@ -88,8 +88,8 @@ def training_model(pruning_rate, layer):
     f = open('../eval.txt', 'a+')
 
     # Running training algorithm and saving results to temporary file
-    weights = 'temp/dfire' + str(pruning_rate) + '.conv.' + str(layer)
-    command = './darknet detector train dfire.data temp/dfire.cfg ' + weights + ' -dont_show -map'
+    weights = 'temp/' + filename + str(pruning_rate) + '.conv.' + str(layer)
+    command = './darknet detector train ' + filename + '.data ' + 'temp/' + filename + '.cfg ' + weights + ' -dont_show -map'
     subprocess.call(command, shell = True, stdout = f)
 
     # Closing file
@@ -97,7 +97,7 @@ def training_model(pruning_rate, layer):
 
     print('\n[DONE] Fine-tuning of the model pruned by ' + str(pruning_rate) + '%\n')
 
-def pre_weights(pruning_rate, layer):
+def pre_weights(filename, pruning_rate, layer):
 
     """ Generates a pre-weight from a trained weight """
 
@@ -105,8 +105,8 @@ def pre_weights(pruning_rate, layer):
     f = open('../eval.txt', 'a+')
 
     # Running freezing algorithm and saving results to temporary file
-    weights = 'temp/dfire' + str(pruning_rate) + '.conv.' + str(layer)
-    command = './darknet partial temp/dfire.cfg temp/dfire.weights ' + weights + ' ' + str(layer)
+    weights = 'temp/' + filename + str(pruning_rate) + '.conv.' + str(layer)
+    command = './darknet partial temp/' + filename + '.cfg temp/' + filename + '.weights ' + weights + ' ' + str(layer)
     subprocess.call(command, shell = True, stdout = f)
 
     # Closing file
@@ -115,12 +115,12 @@ def pre_weights(pruning_rate, layer):
     print('\n[DONE] Pre-weights of the model pruned by ' + str(pruning_rate) + '%\n')
 
 
-def valid_set(set):
+def valid_set(filename, set):
 
     """ Changes validation set in the .data file """
 
     # Opens the file in read-only mode
-    f = open('dfire.data', 'r')
+    f = open(filename + '.data', 'r')
 
     # Reads lines until EOF
     lines = f.readlines()
@@ -128,22 +128,22 @@ def valid_set(set):
     # Loop over the lines
     for i, line in enumerate(lines):
         if 'valid' in line:
-          lines[i] = 'valid = data/dfire_' + set + '.txt\n'
+          lines[i] = 'valid = data/' + filename + '_' + set + '.txt\n'
 
     # Opens the file in write-only mode
-    f = open('dfire.data', 'w')
+    f = open(filename + '.data', 'w')
 
     # Changing validation set in the data file
     f.writelines(lines)
     # Closing file
     f.close()
 
-def hyperparams(img_size, iter, lr, steps):
+def hyperparams(filename, img_size, iter, lr, steps):
 
     """ Changes hyperparameters of the .cfg file """
 
     # Opens the file in read-only mode
-    f = open('temp/dfire.cfg', 'r')
+    f = open('temp/' + filename + '.cfg', 'r')
 
     # Read lines until EOF
     lines = f.readlines()
@@ -166,7 +166,7 @@ def hyperparams(img_size, iter, lr, steps):
             lines[i] = 'subdivisions = 16\n'
 
     # Opens the file in write-only mode
-    f = open('temp/dfire.cfg', 'w')
+    f = open('temp/' + filename + '.cfg', 'w')
 
     # Changing image size in the config file
     f.writelines(lines)
@@ -383,7 +383,7 @@ def enable_cfg(cfg, framework):
 
 def model_to_cfg(model, 
                  version = 3,
-                 cfg = 'dfire.cfg',
+                 cfg = 'yolov4.cfg',
                  mode = 'train',
                  img_size = (416, 416, 3), 
                  learning_rate = 0.001,
