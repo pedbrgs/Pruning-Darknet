@@ -1,5 +1,177 @@
+import os
 import torch
 import numpy as np
+
+def fine_tuning(technique, pruning_rate, img_size, lr, tuning_iter, layer, steps):
+
+    """ Performs the fine-tuning procedure """
+
+    # Partial weights
+    weights = np.arange(start = 1000, stop = tuning_iter + 1000, step = 1000)
+
+    try:
+        # Remove current eval.txt file
+        os.remove('eval.txt')
+    except:
+        pass
+
+    # Float to int
+    pruning_rate = int(pruning_rate*100)
+
+    # Change hyperparameters
+    hyperparams(img_size, tuning_iter, lr, steps)
+    # Change validation set
+    valid_set('valid')
+    # Freezing layers to generate pre-weights
+    pre_weights(pruning_rate, layer)
+    # Training pruned model
+    training_model(pruning_rate, layer)
+
+    # Remove partial weights
+    os.chdir('weights/')
+    for w in weights:
+        try:
+            os.remove('dfire_' + str(w) + '.weights')
+        except:
+            pass
+    os.remove('dfire_last.weights')
+    os.remove('dfire_final.weights')
+    os.rename('dfire_best.weights', '../temp/dfire.weights')
+
+
+def get_variables(model, data, img_size, num_classes, pool_type, perc_samples):
+
+    """ Extracts feature maps and transform them into feature vectors for projection """
+
+    # Output filename
+    filename = 'variables_' + pool_type + '.npy'
+    # Open file with wb mode
+    f = open(filename, 'wb')
+
+    # Extracts all feature maps from all layers of the network for each image in the dataset
+    inputs, labels, img_sizes = filter_representation(model = model, 
+                                                      data = data, 
+                                                      img_size = img_size, 
+                                                      pool_type = pool_type,
+                                                      subset = 'train',
+                                                      route = False,
+                                                      perc_samples = perc_samples)
+
+    # Reshape input variables (filters x images)
+    X = np.array(inputs).reshape((len(inputs[0]), len(inputs)))
+
+    # Saving matrix X
+    np.save(f, X)
+
+    print('Number of images:', X.shape[1])
+    print('Number of filters per image:', X.shape[0])
+
+    print('Shape of input variables:', X.shape)
+
+    # Computes the class label matrix of the training data
+    Y = class_label_matrix(labels, img_sizes, num_classes = num_classes)
+    print('Shape of output variables:', Y.shape)
+
+    # Saving matrix Y
+    np.save(f, Y)
+
+    # Close file
+    f.close()
+
+    return X, Y
+
+def training_model(pruning_rate, layer):
+
+    """ Training the pruned model """
+
+    # Opens the temporary file
+    f = open('../eval.txt', 'a+')
+
+    # Running training algorithm and saving results to temporary file
+    weights = 'temp/dfire' + str(pruning_rate) + '.conv.' + str(layer)
+    command = './darknet detector train dfire.data temp/dfire.cfg ' + weights + ' -dont_show -map'
+    subprocess.call(command, shell = True, stdout = f)
+
+    # Closing file
+    f.close()
+
+    print('\n[DONE] Fine-tuning of the model pruned by ' + str(pruning_rate) + '%\n')
+
+def pre_weights(pruning_rate, layer):
+
+    """ Generates a pre-weight from a trained weight """
+
+    # Opens the temporary file
+    f = open('../eval.txt', 'a+')
+
+    # Running freezing algorithm and saving results to temporary file
+    weights = 'temp/dfire' + str(pruning_rate) + '.conv.' + str(layer)
+    command = './darknet partial temp/dfire.cfg temp/dfire.weights ' + weights + ' ' + str(layer)
+    subprocess.call(command, shell = True, stdout = f)
+
+    # Closing file
+    f.close()
+
+    print('\n[DONE] Pre-weights of the model pruned by ' + str(pruning_rate) + '%\n')
+
+
+def valid_set(set):
+
+    """ Changes validation set in the .data file """
+
+    # Opens the file in read-only mode
+    f = open('dfire.data', 'r')
+
+    # Reads lines until EOF
+    lines = f.readlines()
+
+    # Loop over the lines
+    for i, line in enumerate(lines):
+        if 'valid' in line:
+          lines[i] = 'valid = data/dfire_' + set + '.txt\n'
+
+    # Opens the file in write-only mode
+    f = open('dfire.data', 'w')
+
+    # Changing validation set in the data file
+    f.writelines(lines)
+    # Closing file
+    f.close()
+
+def hyperparams(img_size, iter, lr, steps):
+
+    """ Changes hyperparameters of the .cfg file """
+
+    # Opens the file in read-only mode
+    f = open('temp/dfire.cfg', 'r')
+
+    # Read lines until EOF
+    lines = f.readlines()
+
+    # Loop over the lines
+    for i, line in enumerate(lines):
+        if 'width' in line:
+            lines[i] = 'width = ' + str(img_size) + '\n'
+        elif 'height' in line:
+            lines[i] = 'height = ' + str(img_size) + '\n'
+        elif 'steps = ' in line:
+            lines[i] = 'steps = ' + steps + '\n'
+        elif 'learning_rate' in line:
+            lines[i] = 'learning_rate = ' + str(lr) + '\n'
+        elif 'max_batches' in line:
+            lines[i] = 'max_batches = ' + str(iter) + '\n'
+        elif '^batch =' in line:
+            lines[i] = 'batch = 64\n'
+        elif '^subdivisions' in line:
+            lines[i] = 'subdivisions = 16\n'
+
+    # Opens the file in write-only mode
+    f = open('temp/dfire.cfg', 'w')
+
+    # Changing image size in the config file
+    f.writelines(lines)
+    # Closing file
+    f.close()
 
 def sparsity(model, describe = False):
 

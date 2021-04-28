@@ -934,7 +934,7 @@ def feature_extraction(conv_map, pool_type = 'max'):
 
     return features
 
-def filter_representation(model, data, img_size, pool_type = 'max', subset = 'train', route = False):
+def filter_representation(model, data, img_size, pool_type = 'max', subset = 'train', route = False, perc_samples = 1.0):
 
     """ Extract features from all convolutional maps for each image in the subset. """
 
@@ -960,8 +960,11 @@ def filter_representation(model, data, img_size, pool_type = 'max', subset = 'tr
     path = data[subset]
     dataset = LoadImagesAndLabels(path = path, img_size = img_size, rect = True, single_cls = False)
 
+    # Number of images to extract the activation map
+    num_images = int(perc_samples*(len(dataset)))
+
     # Get convolutional feature maps for each image
-    for i in tqdm(range(len(dataset)), desc = 'Extracting activation maps per image'):
+    for i in tqdm(range(num_images), desc = 'Extracting activation maps per image'):
 
         # Image pre-processing
         img0, _, _ = load_image(dataset, i)
@@ -1034,7 +1037,7 @@ def filter_representation(model, data, img_size, pool_type = 'max', subset = 'tr
         yolo_out_i.clear()
         del x, img0, img
 
-    return inputs, dataset.labels, img_sizes
+    return inputs, dataset.labels[:num_images], img_sizes
 
 def class_label_matrix(labels, img_sizes, num_classes):
 
