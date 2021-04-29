@@ -58,7 +58,7 @@ if __name__ == '__main__':
             X, Y = get_variables(model, opt.data, opt.img_size, opt.num_classes, opt.pool_type, opt.perc_samples)
 
     # Calculate correlation matrices
-    if opt.technique.upper() == 'AGG-CLUSTERING':
+    if opt.technique.upper() == 'HAC':
         CCM = correlation_matrices(model, opt.measure)
         print('Number of correlation matrices:', len(CCM))
         print('Dimension of first correlation matrix:', CCM[0].shape)
@@ -71,7 +71,7 @@ if __name__ == '__main__':
     elif opt.technique.upper() in ['PLS-VIP-SINGLE', 'PLS-VIP-MULTI', 'CCA-CV-MULTI', 'PLS-LC-MULTI']:
         model = projection_based_pruning(model, opt.pruning_rate, opt.technique, X, Y, opt.n_components)
     # Prune network with wrapper-based method
-    elif opt.technique.upper() == 'AGG-CLUSTERING':
+    elif opt.technique.upper() == 'HAC':
         model = wrapper_based_pruning(model, opt.pruning_rate, opt.technique, CCM)
     # Prune network randomly
     elif opt.technique.upper() == 'RANDOM':

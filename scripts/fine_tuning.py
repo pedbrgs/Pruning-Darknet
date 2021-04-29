@@ -4,14 +4,22 @@ import subprocess
 import numpy as np
 import pandas as pd
 
-def training_model(pruning_rate, layer):
+def training_model(filename, technique, pruning_rate, layer):
+
+    """ Training the pruned model """
 
     # Opens the temporary file
     f = open('../eval.txt', 'a+')
 
+    # Training with pre-trained weights
+    if technique.upper() != 'FROM-SCRATCH':
+        weights = 'temp/' + filename + str(pruning_rate) + '.conv.' + str(layer)
+        command = './darknet detector train ' + filename + '.data ' + 'temp/' + filename + '.cfg ' + weights + ' -dont_show -map'
+    # Training from scratch
+    else:
+        command = './darknet detector train ' + filename + '.data ' + 'temp/' + filename + '.cfg -dont_show -map'
+
     # Running training algorithm and saving results to temporary file
-    weights = 'dfire' + str(pruning_rate) + '.conv.' + str(layer)
-    command = './darknet detector train dfire.data dfire.cfg ' + weights + ' -dont_show -map'
     subprocess.call(command, shell = True, stdout = f)
 
     # Closing file
@@ -19,14 +27,16 @@ def training_model(pruning_rate, layer):
 
     print('\n[DONE] Fine-tuning of the model pruned by ' + str(pruning_rate) + '%\n')
 
-def pre_weights(pruning_rate, layer):
+def pre_weights(filename, pruning_rate, layer):
+
+    """ Generates a pre-weight from a trained weight """
 
     # Opens the temporary file
     f = open('../eval.txt', 'a+')
 
     # Running freezing algorithm and saving results to temporary file
-    weights = 'dfire' + str(pruning_rate) + '.conv.' + str(layer)
-    command = './darknet partial dfire.cfg dfire.weights ' + weights + ' ' + str(layer)
+    weights = 'temp/' + filename + str(pruning_rate) + '.conv.' + str(layer)
+    command = './darknet partial temp/' + filename + '.cfg temp/' + filename + '.weights ' + weights + ' ' + str(layer)
     subprocess.call(command, shell = True, stdout = f)
 
     # Closing file
@@ -35,10 +45,12 @@ def pre_weights(pruning_rate, layer):
     print('\n[DONE] Pre-weights of the model pruned by ' + str(pruning_rate) + '%\n')
 
 
-def change_set(set):
+def valid_set(filename, set):
+
+    """ Changes validation set in the .data file """
 
     # Opens the file in read-only mode
-    f = open('dfire.data', 'r')
+    f = open(filename + '.data', 'r')
 
     # Reads lines until EOF
     lines = f.readlines()
@@ -46,20 +58,22 @@ def change_set(set):
     # Loop over the lines
     for i, line in enumerate(lines):
         if 'valid' in line:
-          lines[i] = 'valid = data/dfire_' + set + '.txt\n'
+          lines[i] = 'valid = data/' + filename + '_' + set + '.txt\n'
 
     # Opens the file in write-only mode
-    f = open('dfire.data', 'w')
+    f = open(filename + '.data', 'w')
 
     # Changing validation set in the data file
     f.writelines(lines)
     # Closing file
     f.close()
 
-def change_hyperparams(imgsize, iter, lr, steps):
+def hyperparams(filename, img_size, iter, lr, steps):
+
+    """ Changes hyperparameters of the .cfg file """
 
     # Opens the file in read-only mode
-    f = open('dfire.cfg', 'r')
+    f = open('temp/' + filename + '.cfg', 'r')
 
     # Read lines until EOF
     lines = f.readlines()
@@ -67,9 +81,9 @@ def change_hyperparams(imgsize, iter, lr, steps):
     # Loop over the lines
     for i, line in enumerate(lines):
         if 'width' in line:
-            lines[i] = 'width = ' + str(imgsize) + '\n'
+            lines[i] = 'width = ' + str(img_size) + '\n'
         elif 'height' in line:
-            lines[i] = 'height = ' + str(imgsize) + '\n'
+            lines[i] = 'height = ' + str(img_size) + '\n'
         elif 'steps = ' in line:
             lines[i] = 'steps = ' + steps + '\n'
         elif 'learning_rate' in line:
@@ -82,7 +96,7 @@ def change_hyperparams(imgsize, iter, lr, steps):
             lines[i] = 'subdivisions = 16\n'
 
     # Opens the file in write-only mode
-    f = open('dfire.cfg', 'w')
+    f = open('temp/' + filename + '.cfg', 'w')
 
     # Changing image size in the config file
     f.writelines(lines)
@@ -95,6 +109,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--method', type = str, help = 'Pruning method')
     parser.add_argument('--imgsize', type = int, default = 416, help = 'Image size')
+    parser.add_argument('--dataset', type = str, default = 'dfire', help = 'Dataset name')
     parser.add_argument('--lr', type = float, default = 0.01, help = 'Learning rate')
     parser.add_argument('--tuning-iter', type = int, default = 30000, help = 'Number of fine-tuning iterations')
     parser.add_argument('--layer', type = int, default = 161, help = 'Weights frozen up to this layer for fine-tuning')
@@ -105,8 +120,8 @@ if __name__ == '__main__':
     root = 'Fine-Tuning/' + opt.method + os.sep
     os.chdir(root)
 
-    # Pruned models with pruning rate from 5% to 95%
-    folders = np.arange(start = 5, stop = 100, step = 5)
+    # Pruned models with pruning rate from 10% to 90%
+    folders = np.arange(start = 10, stop = 100, step = 10)
     # Partial weights
     weights = np.arange(start = 1000, stop = opt.tuning_iter + 1000, step = 1000)
 
@@ -123,23 +138,26 @@ if __name__ == '__main__':
         os.chdir(subdir)
 
         # Change hyperparameters
-        change_hyperparams(opt.imgsize, opt.tuning_iter, opt.lr, opt.steps)
+        change_hyperparams(opt.dataset, opt.imgsize, opt.tuning_iter, opt.lr, opt.steps)
         # Change validation set
-        change_set('valid')
-        # Freezing layers to generate pre-weights
-        pre_weights(folder, opt.layer)
+        change_set(opt.dataset, 'valid')
+        # Pre-trained weights
+        if opt.method.upper() != 'FROM-SCRATCH':
+            # Freezing layers to generate pre-weights
+            pre_weights(opt.dataset, folder, layer)
+
         # Training pruned model
-        training_model(folder, opt.layer)
+        training_model(opt.dataset, opt.method, folder, opt.layer)
 
         # Remove partial weights
         os.chdir('weights/')
         for w in weights:
             try:
-                os.remove('dfire_' + str(w) + '.weights')
+                os.remove(opt.dataset + '_' + str(w) + '.weights')
             except:
                 pass
-        os.remove('dfire_last.weights')
-        os.remove('dfire_final.weights')
+        os.remove(opt.dataset + '_last.weights')
+        os.remove(opt.dataset + '_final.weights')
 
         # Returns to root folder
         os.chdir('../../')

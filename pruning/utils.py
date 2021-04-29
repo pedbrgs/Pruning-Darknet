@@ -23,10 +23,14 @@ def fine_tuning(filename, technique, pruning_rate, img_size, lr, tuning_iter, la
     hyperparams(filename, img_size, tuning_iter, lr, steps)
     # Change validation set
     valid_set(filename, 'valid')
-    # Freezing layers to generate pre-weights
-    pre_weights(filename, pruning_rate, layer)
+
+    # Pre-trained weights
+    if technique.upper() != 'FROM-SCRATCH':
+        # Freezing layers to generate pre-weights
+        pre_weights(filename, pruning_rate, layer)
+
     # Training pruned model
-    training_model(filename, pruning_rate, layer)
+    training_model(filename, technique, pruning_rate, layer)
 
     # Remove partial weights
     os.chdir('weights/')
@@ -81,16 +85,22 @@ def get_variables(model, data, img_size, num_classes, pool_type, perc_samples):
 
     return X, Y
 
-def training_model(filename, pruning_rate, layer):
+def training_model(filename, technique, pruning_rate, layer):
 
     """ Training the pruned model """
 
     # Opens the temporary file
     f = open('../eval.txt', 'a+')
 
+    # Training with pre-trained weights
+    if technique.upper() != 'FROM-SCRATCH':
+        weights = 'temp/' + filename + str(pruning_rate) + '.conv.' + str(layer)
+        command = './darknet detector train ' + filename + '.data ' + 'temp/' + filename + '.cfg ' + weights + ' -dont_show -map'
+    # Training from scratch
+    else:
+        command = './darknet detector train ' + filename + '.data ' + 'temp/' + filename + '.cfg -dont_show -map'
+
     # Running training algorithm and saving results to temporary file
-    weights = 'temp/' + filename + str(pruning_rate) + '.conv.' + str(layer)
-    command = './darknet detector train ' + filename + '.data ' + 'temp/' + filename + '.cfg ' + weights + ' -dont_show -map'
     subprocess.call(command, shell = True, stdout = f)
 
     # Closing file
