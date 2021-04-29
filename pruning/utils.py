@@ -1,7 +1,6 @@
 import os
 import torch
 import numpy as np
-from pruning.techniques import *
 
 def fine_tuning(filename, technique, pruning_rate, img_size, lr, tuning_iter, layer, steps):
 
@@ -42,48 +41,6 @@ def fine_tuning(filename, technique, pruning_rate, img_size, lr, tuning_iter, la
     os.remove(filename + '_last.weights')
     os.remove(filename + '_final.weights')
     os.rename(filename + '_best.weights', '../temp/' + filename + '.weights')
-
-
-def get_variables(model, data, img_size, num_classes, pool_type, perc_samples):
-
-    """ Extracts feature maps and transform them into feature vectors for projection """
-
-    # Output filename
-    filename = 'variables_' + pool_type + '.npy'
-    # Open file with wb mode
-    f = open(filename, 'wb')
-
-    # Extracts all feature maps from all layers of the network for each image in the dataset
-    inputs, labels, img_sizes = filter_representation(model = model, 
-                                                      data = data, 
-                                                      img_size = img_size, 
-                                                      pool_type = pool_type,
-                                                      subset = 'train',
-                                                      route = False,
-                                                      perc_samples = perc_samples)
-
-    # Reshape input variables (filters x images)
-    X = np.array(inputs).reshape((len(inputs[0]), len(inputs)))
-
-    # Saving matrix X
-    np.save(f, X)
-
-    print('Number of images:', X.shape[1])
-    print('Number of filters per image:', X.shape[0])
-
-    print('Shape of input variables:', X.shape)
-
-    # Computes the class label matrix of the training data
-    Y = class_label_matrix(labels, img_sizes, num_classes = num_classes)
-    print('Shape of output variables:', Y.shape)
-
-    # Saving matrix Y
-    np.save(f, Y)
-
-    # Close file
-    f.close()
-
-    return X, Y
 
 def training_model(filename, technique, pruning_rate, layer):
 
