@@ -76,7 +76,7 @@ if __name__ == '__main__':
         elif opt.technique.upper() == 'HAC':
             model = wrapper_based_pruning(model, opt.pruning_rate, opt.technique, CCM)
         # Prune network randomly
-        elif opt.technique.upper() == 'RANDOM':
+        elif opt.technique.upper() in ['RANDOM', 'FROM-SCRATCH']:
             model = random_pruning(model, opt.pruning_rate, -1)
         else:
             raise AssertionError('The technique %s does not exist.' % (opt.technique))
