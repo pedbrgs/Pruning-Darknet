@@ -46,7 +46,7 @@ if __name__ == '__main__':
         except:
             raise AssertionError('To prune using a projection-based method, you must generate the X and Y variables first.')
 
-    if opt.technique.upper() == 'AGG-CLUSTERING':
+    if opt.technique.upper() == 'HAC':
         try:
             with open(opt.variables, 'rb') as f:
                 CCM = np.load(f, allow_pickle = True)
@@ -73,10 +73,10 @@ if __name__ == '__main__':
         elif opt.technique.upper() in ['PLS-VIP-SINGLE', 'PLS-VIP-MULTI', 'CCA-CV-MULTI', 'PLS-LC-MULTI']:
             model = projection_based_pruning(model, pruning_rate, opt.technique, X, Y, opt.n_components)
         # Prune network with wrapper-based method
-        elif opt.technique.upper() == 'AGG-CLUSTERING':
+        elif opt.technique.upper() == 'HAC':
             model = wrapper_based_pruning(model, pruning_rate, opt.technique, CCM)
         # Prune network randomly
-        elif opt.technique.upper() == 'RANDOM':
+        elif opt.technique.upper() == ['RANDOM', 'FROM-SCRATCH']:
             model = random_pruning(model, pruning_rate, -1)
         else:
             raise AssertionError('The technique %s does not exist.' % (opt.technique))
