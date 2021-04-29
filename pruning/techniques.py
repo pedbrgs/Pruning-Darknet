@@ -845,10 +845,10 @@ def wrapper_based_pruning(model, rate, technique, CCM = None):
 
     print('Wrapper-based pruning method: %s.' % (technique.upper()))
 
-    if technique.upper() == 'AGG-CLUSTERING':
+    if technique.upper() == 'HAC':
         selected = agglomerative_clustering(model, rate, CCM)
     else:
-        raise AssertionError('The technique %s does not exist. Try Agg-Clustering.' % (technique))
+        raise AssertionError('The technique %s does not exist. Try HAC.' % (technique))
     
     # Progress bar
     pbar = tqdm(total = len(selected), desc = 'Pruning convolutional filters')
