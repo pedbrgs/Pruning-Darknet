@@ -12,7 +12,7 @@ def fine_tuning(filename, technique, pruning_rate, img_size, lr, tuning_iter, la
 
     try:
         # Remove current eval.txt file
-        os.remove('eval.txt')
+        os.remove('./eval.txt')
     except:
         pass
 
@@ -71,7 +71,7 @@ def pre_weights(filename, pruning_rate, layer):
     """ Generates a pre-weight from a trained weight """
 
     # Opens the temporary file
-    f = open('../eval.txt', 'a+')
+    f = open('./eval.txt', 'a+')
 
     # Running freezing algorithm and saving results to temporary file
     weights = 'temp/' + filename + str(pruning_rate) + '.conv.' + str(layer)
