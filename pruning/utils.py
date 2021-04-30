@@ -48,7 +48,7 @@ def training_model(filename, technique, pruning_rate, layer):
     """ Training the pruned model """
 
     # Opens the temporary file
-    f = open('../eval.txt', 'a+')
+    f = open('./eval.txt', 'a+')
 
     # Training with pre-trained weights
     if technique.upper() != 'FROM-SCRATCH':
