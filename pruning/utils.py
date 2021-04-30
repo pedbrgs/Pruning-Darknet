@@ -1,5 +1,6 @@
 import os
 import torch
+import subprocess
 import numpy as np
 
 def fine_tuning(filename, technique, pruning_rate, img_size, lr, tuning_iter, layer, steps):
