@@ -41,7 +41,7 @@ def fine_tuning(filename, technique, pruning_rate, img_size, lr, tuning_iter, la
             pass
     os.remove(filename + '_last.weights')
     os.remove(filename + '_final.weights')
-    os.rename(filename + '_best.weights', '../temp/' + filename + '.weights')
+    os.rename(filename + '_best.weights', '../temp/' + filename + '_best.weights')
 
     # Return to root folder
     os.chdir('../')
