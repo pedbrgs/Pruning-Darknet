@@ -33,13 +33,13 @@ if __name__ == '__main__':
     print(opt)
 
     # Create temporary folder
-    os.makedirs('temp/', exist_ok = True)
+    os.makedirs('./temp/', exist_ok = True)
     # Move .cfg file to temporary folder
-    shutil.copy2(src = opt.cfg, dst = 'temp/' + opt.cfg)
-    opt.cfg = 'temp/' + opt.cfg
+    shutil.copy2(src = opt.cfg, dst = './temp/' + opt.cfg)
+    opt.cfg = './temp/' + opt.cfg
     # Move .weights file to temporary folder
-    shutil.copy2(src = opt.weights, dst = 'temp/' + opt.weights)
-    opt.weights = 'temp/' + opt.weights
+    shutil.copy2(src = opt.weights, dst = './temp/' + opt.weights)
+    opt.weights = './temp/' + opt.weights
 
     print('Pruning technique:', opt.technique)
 

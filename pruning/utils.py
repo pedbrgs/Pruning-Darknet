@@ -43,6 +43,9 @@ def fine_tuning(filename, technique, pruning_rate, img_size, lr, tuning_iter, la
     os.remove(filename + '_final.weights')
     os.rename(filename + '_best.weights', '../temp/' + filename + '.weights')
 
+    # Return to root folder
+    os.chdir('../')
+
 def training_model(filename, technique, pruning_rate, layer):
 
     """ Training the pruned model """
