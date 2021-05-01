@@ -1,5 +1,6 @@
 import os
 import torch
+import shutil
 import subprocess
 import numpy as np
 
@@ -41,7 +42,7 @@ def fine_tuning(filename, technique, pruning_rate, img_size, lr, tuning_iter, la
             pass
     os.remove(filename + '_last.weights')
     os.remove(filename + '_final.weights')
-    os.rename(filename + '_best.weights', '../temp/' + filename + '_best.weights')
+    shutil.copy2(filename + '_best.weights', dst = '../temp/' + filename + '.weights')
 
     # Return to root folder
     os.chdir('../')
