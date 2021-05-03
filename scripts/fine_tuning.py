@@ -144,7 +144,7 @@ if __name__ == '__main__':
         # Pre-trained weights
         if opt.method.upper() != 'FROM-SCRATCH':
             # Freezing layers to generate pre-weights
-            pre_weights(opt.dataset, folder, layer)
+            pre_weights(opt.dataset, folder, opt.layer)
 
         # Training pruned model
         training_model(opt.dataset, opt.method, folder, opt.layer)
