@@ -138,9 +138,9 @@ if __name__ == '__main__':
         os.chdir(subdir)
 
         # Change hyperparameters
-        change_hyperparams(opt.dataset, opt.imgsize, opt.tuning_iter, opt.lr, opt.steps)
+        hyperparams(opt.dataset, opt.imgsize, opt.tuning_iter, opt.lr, opt.steps)
         # Change validation set
-        change_set(opt.dataset, 'valid')
+        valid_set(opt.dataset, 'valid')
         # Pre-trained weights
         if opt.method.upper() != 'FROM-SCRATCH':
             # Freezing layers to generate pre-weights
