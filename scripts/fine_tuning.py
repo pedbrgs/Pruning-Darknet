@@ -13,11 +13,11 @@ def training_model(filename, technique, pruning_rate, layer):
 
     # Training with pre-trained weights
     if technique.upper() != 'FROM-SCRATCH':
-        weights = 'temp/' + filename + str(pruning_rate) + '.conv.' + str(layer)
-        command = './darknet detector train ' + filename + '.data ' + 'temp/' + filename + '.cfg ' + weights + ' -dont_show -map'
+        weights = filename + str(pruning_rate) + '.conv.' + str(layer)
+        command = './darknet detector train ' + filename + '.data ' + filename + '.cfg ' + weights + ' -dont_show -map'
     # Training from scratch
     else:
-        command = './darknet detector train ' + filename + '.data ' + 'temp/' + filename + '.cfg -dont_show -map'
+        command = './darknet detector train ' + filename + '.data ' + filename + '.cfg -dont_show -map'
 
     # Running training algorithm and saving results to temporary file
     subprocess.call(command, shell = True, stdout = f)
@@ -35,8 +35,8 @@ def pre_weights(filename, pruning_rate, layer):
     f = open('../eval.txt', 'a+')
 
     # Running freezing algorithm and saving results to temporary file
-    weights = 'temp/' + filename + str(pruning_rate) + '.conv.' + str(layer)
-    command = './darknet partial temp/' + filename + '.cfg temp/' + filename + '.weights ' + weights + ' ' + str(layer)
+    weights = filename + str(pruning_rate) + '.conv.' + str(layer)
+    command = './darknet partial ' + filename + '.cfg ' + filename + '.weights ' + weights + ' ' + str(layer)
     subprocess.call(command, shell = True, stdout = f)
 
     # Closing file
@@ -73,7 +73,7 @@ def hyperparams(filename, img_size, iter, lr, steps):
     """ Changes hyperparameters of the .cfg file """
 
     # Opens the file in read-only mode
-    f = open('temp/' + filename + '.cfg', 'r')
+    f = open(filename + '.cfg', 'r')
 
     # Read lines until EOF
     lines = f.readlines()
@@ -96,7 +96,7 @@ def hyperparams(filename, img_size, iter, lr, steps):
             lines[i] = 'subdivisions = 16\n'
 
     # Opens the file in write-only mode
-    f = open('temp/' + filename + '.cfg', 'w')
+    f = open(filename + '.cfg', 'w')
 
     # Changing image size in the config file
     f.writelines(lines)
