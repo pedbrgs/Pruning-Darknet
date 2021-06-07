@@ -116,12 +116,12 @@ if __name__ == '__main__':
     parser.add_argument('--layer', type = int, default = 161, help = 'Weights frozen up to this layer for fine-tuning')
     opt = parser.parse_args()
 
-    # Create temporary folder
-    os.makedirs('./convergence/', exist_ok = True)
-
     # Open root folder
     root = 'Fine-Tuning/' + opt.method + os.sep + str(opt.pruning_rate) + os.sep
     os.chdir(root)
+
+    # Create temporary folder
+    os.makedirs('./convergence/', exist_ok = True)
 
     # Fine tuning iterations
     iterations = np.arange(start = 5000, stop = 30000, step = 5000)
