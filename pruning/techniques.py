@@ -579,6 +579,16 @@ def pls_lc_multi(model, X, Y):
 
     return importances
 
+def split_pruned_filters(n_filters, iter):
+
+    n_filters_iter = np.zeros((iter, len(n_filters)))
+
+    for i, num in enumerate(n_filters):
+        n_filters_iter[:,i] = np.array([num // iter + (1 if x < num % iter else 0)  for x in range (iter)])
+    
+    return n_filters_iter
+
+
 def per_layer(model, rate):
 
     """ Calculates the number of filters that will be removed in each layer. """
@@ -591,7 +601,7 @@ def per_layer(model, rate):
         
     return n_filters
 
-def select_filters(model, rate, importances, mode = 'layer', ascending = True):
+def select_filters(model, rate, importances, mode = 'layer', ascending = True, n_filters = None):
 
     """ Select the filters to be removed based on their respective importance. """ 
 
@@ -605,8 +615,10 @@ def select_filters(model, rate, importances, mode = 'layer', ascending = True):
 
     if mode == 'layer':
 
-        # Number of filters per layer to be removed
-        n_filters = per_layer(model, rate = rate)
+        # Single pruning
+        if n_filters is None:
+            # Number of filters per layer to be removed
+            n_filters = per_layer(model, rate = rate)
 
         # Selecting the filters for each layer that will be pruned
         blocks = list(importances['Block'].drop_duplicates().sort_values(ascending = True))
@@ -643,7 +655,7 @@ def select_filters(model, rate, importances, mode = 'layer', ascending = True):
     # Returns tuple with less important filters
     return list(selected.to_records(index=False))
 
-def criteria_based_pruning(model, rate, rank):
+def criteria_based_pruning(model, rate, rank, n_filters = None):
 
     """ Criteria-based pruning of convolutional filters in the model. """
   
@@ -651,7 +663,7 @@ def criteria_based_pruning(model, rate, rank):
 
     if rank.upper() in ['L0', 'L1', 'L2', 'L-INF']:
         importances = norm(model, order = rank)
-        selected = select_filters(model, rate, importances, mode = 'layer', ascending = True)
+        selected = select_filters(model, rate, importances, mode = 'layer', ascending = True, n_filters = n_filters)
     else:
         raise AssertionError('The rank %s does not exist. Try L0, L1, L2 or L-Inf.' % (rank))
 
@@ -671,7 +683,7 @@ def criteria_based_pruning(model, rate, rank):
 
     return model
 
-def projection_based_pruning(model, rate, technique, X, Y, c):
+def projection_based_pruning(model, rate, technique, X, Y, c, n_filters = None):
 
     """ Projections-based pruning of convolutional filters in the model. """
   
@@ -682,13 +694,13 @@ def projection_based_pruning(model, rate, technique, X, Y, c):
         selected = select_filters(model, rate, importances, mode = 'network', ascending = True)
     elif technique.upper() == 'PLS-VIP-MULTI':
         importances = pls_vip_multi(model, X, Y, c)
-        selected = select_filters(model, rate, importances, mode = 'layer', ascending = True)
+        selected = select_filters(model, rate, importances, mode = 'layer', ascending = True, n_filters = n_filters)
     elif technique.upper() == "CCA-CV-MULTI":
         importances = cca_multi(model, X, Y, c)
-        selected = select_filters(model, rate, importances, mode = 'layer', ascending = True)
+        selected = select_filters(model, rate, importances, mode = 'layer', ascending = True, n_filters = n_filters)
     elif technique.upper() == "PLS-LC-MULTI":
         importances = pls_lc_multi(model, X, Y)
-        selected = select_filters(model, rate, importances, mode = 'layer', ascending = True)
+        selected = select_filters(model, rate, importances, mode = 'layer', ascending = True, n_filters = n_filters)
     else:
         raise AssertionError('The technique %s does not exist. Try PLS-VIP-Single, PLS-VIP-Multi, CCA-Multi or PLS-LC-Multi.' % (technique))
 
@@ -798,7 +810,7 @@ def cluster_analysis(CCM, clustering, block):
 
     return selected
 
-def agglomerative_clustering(model, rate, CCM):
+def agglomerative_clustering(model, rate, CCM, n_filters = None):
 
     """ Agglomerative clustering pruning method based on correlation between convolutional filters.
     Based on paper Deep Network Pruning for Object Detection (https://ieeexplore.ieee.org/document/8803505) """
@@ -815,16 +827,23 @@ def agglomerative_clustering(model, rate, CCM):
     for i, block in enumerate(blocks):
 
         # Number of filters in the current layer
-        n_filters = CCM[i].shape[0]
+        f_layer = CCM[i].shape[0]
+
+        # Number of filters to prune
+        if n_filters is None:
+            n_prunable = int(rate*f_layer)
+        else:
+            n_prunable = n_filters[i]
+
         # Clustering filters of the current layer
-        clustering = AgglomerativeClustering(n_clusters = (n_filters - int(rate*n_filters)), 
+        clustering = AgglomerativeClustering(n_clusters = (f_layer - n_prunable), 
                                              linkage = 'complete', 
                                              affinity = 'precomputed').fit(1-CCM[i])
         # Select filters of the current layer to prune
         selected_l = cluster_analysis(np.absolute(CCM), clustering, i)
 
         # Concatenating (Block/Filter/Importance)
-        selected.append(np.column_stack([[block]*int(rate*n_filters), sorted(selected_l, reverse = True)]))
+        selected.append(np.column_stack([[block]*n_prunable, sorted(selected_l, reverse = True)]))
 
         # Update progress bar
         pbar.update(1)
@@ -839,14 +858,14 @@ def agglomerative_clustering(model, rate, CCM):
 
     return selected
 
-def wrapper_based_pruning(model, rate, technique, CCM = None):
+def wrapper_based_pruning(model, rate, technique, CCM = None, n_filters = None):
 
     """ Wrapper approaches include a classification/clustering algorithm in the filter evaluation step. """
 
     print('Wrapper-based pruning method: %s.' % (technique.upper()))
 
     if technique.upper() == 'HAC':
-        selected = agglomerative_clustering(model, rate, CCM)
+        selected = agglomerative_clustering(model, rate, CCM, n_filters)
     else:
         raise AssertionError('The technique %s does not exist. Try HAC.' % (technique))
     
@@ -866,7 +885,7 @@ def wrapper_based_pruning(model, rate, technique, CCM = None):
 
     return model
 
-def random_pruning(model, rate, seed = 42):
+def random_pruning(model, rate, seed = 42, n_filters = None):
 
     """ Random pruning of convolutional filters in the model. """
 
@@ -877,8 +896,10 @@ def random_pruning(model, rate, seed = 42):
 
     blocks = to_prune(model)
 
-    # Number of filters per layer to be removed
-    n_filters = per_layer(model, rate)
+    # Single pruning
+    if n_filters is None:
+        # Number of filters per layer to be removed
+        n_filters = per_layer(model, rate)
 
     if len(blocks) != len(n_filters):
         raise AssertionError('%d != %d\n' % (len(blocks), len(n_filters)))
