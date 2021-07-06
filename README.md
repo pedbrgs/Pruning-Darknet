@@ -38,15 +38,15 @@ Note: If you arrived here in this repository without ever training a network in 
 
 * Example for a criterion-based method:
 
-`python iterative_pruning.py --cfg yolo.cfg --data yolo.data --names yolo.names --weights yolo.weights --network YOLOv4 --img-size 416 --technique L1 --pruning-rate 0.60 --pruning-iter 2 --lr 0.005 --tuning-iter 30000`
+`python prune.py --cfg yolo.cfg --data yolo.data --names yolo.names --weights yolo.weights --network YOLOv4 --img-size 416 --technique L1 --pruning-rate 0.60 --pruning-iter 2 --lr 0.005 --tuning-iter 30000`
 
 * Example for a projection-based method:
 
-`python iterative_pruning.py --cfg yolo.cfg --data yolo.data --names yolo.names --weights yolo.weights --network YOLOv4 --img-size 416 --technique PLS-VIP-Multi --pruning-rate 0.60 --pruning-iter 2 --lr 0.005 --tuning-iter 30000 --pool-type max --n-components 2 --num-classes 3 --perc-samples 0.1`
+`python prune.py --cfg yolo.cfg --data yolo.data --names yolo.names --weights yolo.weights --network YOLOv4 --img-size 416 --technique PLS-VIP-Multi --pruning-rate 0.60 --pruning-iter 2 --lr 0.005 --tuning-iter 30000 --pool-type max --n-components 2 --num-classes 3 --perc-samples 0.1`
 
 * Example for a cluster-based method:
 
-`python iterative_pruning.py --cfg yolo.cfg --data yolo.data --names yolo.names --weights yolo.weights --network YOLOv4 --img-size 416 --technique HAC --pruning-rate 0.60 --pruning-iter 2 --lr 0.005 --tuning-iter 30000 --measure Pearson`
+`python prune.py --cfg yolo.cfg --data yolo.data --names yolo.names --weights yolo.weights --network YOLOv4 --img-size 416 --technique HAC --pruning-rate 0.60 --pruning-iter 2 --lr 0.005 --tuning-iter 30000 --measure Pearson`
 
 ***
 
