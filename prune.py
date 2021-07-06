@@ -20,12 +20,13 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type = float, default = 0.005, help = 'learning rate for fine-tuning')
     parser.add_argument('--tuning-iter', type = int, default = 30000, help = 'fine-tuning iterations')
     parser.add_argument('--technique', type = str, help = 'pruning technique')
-    parser.add_argument('--pruning-iter', type = int, default = 5, help = 'pruning iterations')
-    parser.add_argument('--pruning-rate', type = float, help = 'pruning rate per iteration')
+    parser.add_argument('--pruning-iter', type = int, help = 'pruning iterations for iterative pruning')
+    parser.add_argument('--pruning-rate', type = float, help = 'pruning rate in total')
+    parser.add_argument('--tuning', action = 'store_true', help = 'perform fine-tuning after pruning or not')
     parser.add_argument('--network', type = str, default = 'YOLOv4', help = 'network version')
-    parser.add_argument('--measure', type = str, help = 'correlation measure for clustering approach')
+    parser.add_argument('--measure', type = str, default = 'Pearson', help = 'correlation measure for clustering approach')
     parser.add_argument('--pool-type', type = str, default = 'max', help = 'pooling operation')
-    parser.add_argument('--n-components', type = int, help = 'number of components of projection method')
+    parser.add_argument('--n-components', type = int, default = 2, help = 'number of components of projection method')
     parser.add_argument('--num-classes', type = int, default = 3, help = 'number of classes of the output variable for projection')
     parser.add_argument('--perc-samples', type = float, default = 1.0, help = 'percentage of samples to train the projection model')
 
@@ -52,6 +53,12 @@ if __name__ == '__main__':
         enable_cfg(opt.cfg, framework = 'PyTorch')
         model = YOLO(opt.cfg, opt.data, opt.names, opt.weights, opt.img_size)
 
+        # First pruning iteration
+        if pruning_iter == 0:
+            # Number of filters that will be pruned per layer in each pruning iteration
+            n_filters = per_layer(model, opt.pruning_rate)
+            n_filters_iter = split_pruned_filters(n_filters, opt.pruning_iter)
+
         print('Prunable layers:', len(to_prune(model)))
         print('Prunable filters:', prunable_filters(model))
 
@@ -68,16 +75,16 @@ if __name__ == '__main__':
 
         # Prune network with criteria-based method
         if opt.technique.upper() in ['L0', 'L1', 'L2', 'L-INF']:
-            model = criteria_based_pruning(model, opt.pruning_rate, opt.technique)
+            model = criteria_based_pruning(model, opt.pruning_rate, opt.technique, n_filters_iter[pruning_iter,:].astype(int))
         # Prune network with projection-based method
         elif opt.technique.upper() in ['PLS-VIP-SINGLE', 'PLS-VIP-MULTI', 'CCA-CV-MULTI', 'PLS-LC-MULTI']:
-            model = projection_based_pruning(model, opt.pruning_rate, opt.technique, X, Y, opt.n_components)
+            model = projection_based_pruning(model, opt.pruning_rate, opt.technique, X, Y, opt.n_components, n_filters_iter[pruning_iter,:].astype(int))
         # Prune network with wrapper-based method
         elif opt.technique.upper() == 'HAC':
-            model = wrapper_based_pruning(model, opt.pruning_rate, opt.technique, CCM)
+            model = wrapper_based_pruning(model, opt.pruning_rate, opt.technique, CCM, n_filters_iter[pruning_iter,:].astype(int))
         # Prune network randomly
         elif opt.technique.upper() in ['RANDOM', 'FROM-SCRATCH']:
-            model = random_pruning(model, opt.pruning_rate, -1)
+            model = random_pruning(model, opt.pruning_rate, -1, n_filters_iter[pruning_iter,:].astype(int))
         else:
             raise AssertionError('The technique %s does not exist.' % (opt.technique))
 
@@ -89,13 +96,14 @@ if __name__ == '__main__':
         # Deleting current model
         del model
 
-        # Fine-tuning
-        fine_tuning(filename = opt.names.split('.')[0],
-                    technique = opt.technique,
-                    pruning_rate = opt.pruning_rate,
-                    img_size = opt.img_size,
-                    lr = opt.lr,
-                    tuning_iter = opt.tuning_iter,
-                    layer = 161,
-                    steps = str(int(opt.tuning_iter*0.8)) + ',' +
-                            str(int(opt.tuning_iter*0.9)))
+        # Performs fine-tuning
+        if opt.tuning == True:
+            fine_tuning(filename = opt.names.split('.')[0],
+                        technique = opt.technique,
+                        pruning_rate = opt.pruning_rate,
+                        img_size = opt.img_size,
+                        lr = opt.lr,
+                        tuning_iter = opt.tuning_iter,
+                        layer = 161,
+                        steps = str(int(opt.tuning_iter*0.8)) + ',' +
+                                str(int(opt.tuning_iter*0.9)))

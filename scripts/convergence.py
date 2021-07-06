@@ -3,7 +3,6 @@ import shutil
 import argparse
 import subprocess
 import numpy as np
-import pandas as pd
 
 def training_model(filename, technique, pruning_rate, layer):
 
