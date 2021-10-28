@@ -13,8 +13,8 @@ This repository contains the source codes of some techniques for filter pruning 
 The pruning techniques implemented can be classified into three categories:
 
 1. Criteria-based pruning techniques: L0-Norm, L1-Norm, L2-Norm, L-Inf Norm and Random.
-2. Projection-based pruning techniques: PLS-VIP-Single, PLS-VIP-Multi, CCA-CV-Multi and PLS-LC-Multi.
-3. Cluster-based pruning techniques: HAC.
+2. Projection-based pruning techniques: PLS(Single)+VIP, PLS(Multi)+VIP, CCA(Multi)+CV and PLS(Multi)+LC.
+3. Cluster-based pruning techniques: HAC+PCC.
 
 Note: If you do not want to reuse the filters that remained in the pruned architecture for fine-tuning, just use the From-Scratch mode.
 
