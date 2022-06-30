@@ -61,15 +61,9 @@ Note: If you arrived here in this repository without ever training a network in 
 
 ### Citation info
 
-If you're using these codes in any way, please let them know your source:
+Please cite my paper in your publications if you use this source code.
 
-```
-@Misc{Venancio2021-Pruning,
-title = {Pruning techniques of convolutional neural networks implemented in the Darknet framework},
-author = {Pedro Vinicius A. B. Venancio},
-howPublished = {\url{https://git.io/JmjNB}},
-year = {2021}}
-```
+<p align="justify"><b>Pedro Vinícius Almeida Borges de Venâncio</b>, Adriano Chaves Lisboa, Adriano Vilela Barbosa: <a href="https://link.springer.com/article/10.1007/s00521-022-07467-z"> An automatic fire detection system based on deep convolutional neural networks for low-power, resource-constrained devices. </a> In: Neural Computing and Applications, 2022.</p>
 
 ***
 
